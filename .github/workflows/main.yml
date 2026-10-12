@@ -1,8 +1,7 @@
 
 name: Build Al-Noor Zakat Calculator APK
 
-on:
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 permissions:
   contents: read
@@ -26,34 +25,36 @@ jobs:
           ZIP_FILE=$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Android project ZIP not found."
+            echo "ERROR: Android project ZIP not found in repository root."
             exit 1
           fi
 
-          mkdir extracted
+          mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
 
-      - name: Find Android project
+          echo "Extracted files:"
+          find extracted -maxdepth 3 -type f | head -100
+
+      - name: Locate Android project
         run: |
           SETTINGS=$(find extracted -type f \
             \( -name settings.gradle -o -name settings.gradle.kts \) \
             -print -quit)
 
           if [ -z "$SETTINGS" ]; then
-            echo "ERROR: Android project settings file not found."
-            find extracted -maxdepth 4 -type f
+            echo "ERROR: settings.gradle was not found."
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build APK
+      - name: Build Android APK
         run: |
           cd "$PROJECT_DIR"
 
           if [ ! -f gradlew ]; then
-            echo "ERROR: Gradle wrapper is missing."
+            echo "ERROR: Gradle wrapper is missing from the project."
             exit 1
           fi
 
