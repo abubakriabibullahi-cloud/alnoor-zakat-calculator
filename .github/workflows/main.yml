@@ -49,17 +49,28 @@ jobs:
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build Android APK
+            - name: Build Android APK
         run: |
           cd "$PROJECT_DIR"
 
-          if [ ! -f gradlew ]; then
-            echo "ERROR: Gradle wrapper is missing from the project."
-            exit 1
-          fi
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          else
+            echo "Gradle wrapper missing. Checking for Gradle build files."
 
-          chmod +x gradlew
-          ./gradlew assembleDebug
+            if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
+              echo "ERROR: Android settings file is missing."
+              exit 1
+            fi
+
+            if [ ! -f build.gradle ] && [ ! -f build.gradle.kts ]; then
+              echo "ERROR: Root Gradle build file is missing."
+              exit 1
+            fi
+
+            gradle assembleDebug
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
