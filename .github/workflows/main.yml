@@ -41,23 +41,42 @@ jobs:
             \( -name settings.gradle -o -name settings.gradle.kts \) \
             -print -quit)
 
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle was not found."
-            exit 1
-          fi
+          - name: Find Android Project
+  run: |
+  SETTINGS=$(find extracted -type f 
+  -name settings.gradle -o -name settings.gradle.kts 
+  -print -quit)
+  
+      if [ -z "$SETTINGS" ]; then
+      echo "ERROR: settings.gradle was not found."
+      exit 1
+    fi
 
-          PROJECT_DIR=$(dirname "$SETTINGS")
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+    PROJECT_DIR=$(dirname "$SETTINGS")
+    echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-            - name: Build Android APK
-        run: |
-          cd "$PROJECT_DIR"
+- name: Build Android APK
+  run: |
+    cd "$PROJECT_DIR"
 
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-            ./gradlew assembleDebug
-          else
-            echo "Gradle wrapper missing. Checking for Gradle build files."
+    if [ -f gradlew ]; then
+      chmod +x gradlew
+      ./gradlew assembleDebug
+    else
+      echo "Gradle wrapper missing. Checking for Gradle build files."
+
+      if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
+        echo "ERROR: Android settings file is missing."
+        exit 1
+      fi
+
+      if [ ! -f build.gradle ] && [ ! -f build.gradle.kts ]; then
+        echo "ERROR: Root Gradle build file is missing."
+        exit 1
+      fi
+
+      gradle assembleDebug
+    fi
 
             if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
               echo "ERROR: Android settings file is missing."
