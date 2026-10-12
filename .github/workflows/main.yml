@@ -3,56 +3,51 @@ name: Build Al-Noor Zakat Calculator APK
 on: [push, workflow_dispatch]
 
 jobs:
-build:
-runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  - name: Set up Java
-    uses: actions/setup-java@v4
-    with:
-      distribution: temurin
-      java-version: '17'
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-  - name: Install Gradle
-    uses: gradle/actions/setup-gradle@v4
-    with:
-      gradle-version: '8.9'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
-  - name: Extract Android project
-    run: |
-      mkdir -p extracted
-      ZIP_FILE=$(find . -maxdepth 2 -type f -name "*.zip" -print -quit)
+      - name: Extract Android project
+        run: |
+          mkdir -p extracted
+          ZIP_FILE=$(find . -maxdepth 2 -type f -name "*.zip" -print -quit)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: Project ZIP file not found."
+            exit 1
+          fi
+          unzip -o "$ZIP_FILE" -d extracted
 
-      if [ -z "$ZIP_FILE" ]; then
-        echo "ERROR: Project ZIP file was not found."
-        exit 1
-      fi
+      - name: Find Android project
+        run: |
+          SETTINGS=$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle not found."
+            exit 1
+          fi
+          echo "PROJECT_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
 
-      unzip -o "$ZIP_FILE" -d extracted
+      - name: Build Android APK
+        run: |
+          cd "$PROJECT_DIR"
+          gradle assembleDebug
 
-  - name: Find Android project
-    run: |
-      SETTINGS=$(find extracted -type f -name settings.gradle -o -name settings.gradle.kts -print -quit)
-
-      if [ -z "$SETTINGS" ]; then
-        echo "ERROR: settings.gradle was not found."
-        exit 1
-      fi
-
-      PROJECT_DIR=$(dirname "$SETTINGS")
-      echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-  - name: Build Android APK
-    run: |
-      cd "$PROJECT_DIR"
-      gradle assembleDebug
-
-  - name: Upload APK
-    uses: actions/upload-artifact@v4
-    with:
-      name: AlNoor-Zakat-Calculator-APK
-      path: "**/build/outputs/apk/debug/*.apk"
-      if-no-files-found: error
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlNoor-Zakat-Calculator-APK
+          path: "**/build/outputs/apk/debug/*.apk"
+          if-no-files-found: error
