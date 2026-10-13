@@ -1,0 +1,43 @@
+name: Extract Android Project ZIP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/alnoor
+
+          zip_file="$(find . -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          if [ -z "$zip_file" ]; then
+            echo "No ZIP file found in the repository root."
+            exit 1
+          fi
+
+          unzip -q "$zip_file" -d /tmp/alnoor
+          project_file="$(find /tmp/alnoor -name settings.gradle.kts -type f -print -quit)"
+
+          if [ -z "$project_file" ]; then
+            echo "Android project files were not found in the ZIP."
+            exit 1
+          fi
+
+          project_dir="$(dirname "$project_file")"
+          cp -a "$project_dir"/. .
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Add Android project source files"
+          git push
