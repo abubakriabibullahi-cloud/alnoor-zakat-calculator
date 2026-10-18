@@ -1,0 +1,92 @@
+name: Build Al-Noor Zakat Calculator APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Check for project ZIP
+        run: |
+          set -e
+          ZIP_FILE="AlNoorZakatCalculator_Professional_Fixed.zip"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: Corrected project ZIP was not found."
+            echo "Files currently in the repository:"
+            ls -la
+            exit 1
+          fi
+
+      - name: Extract Android project
+        run: |
+          set -e
+          mkdir -p extracted
+          unzip -o -q \
+            "AlNoorZakatCalculator_Professional_Fixed.zip" \
+            -d extracted
+
+          test -f extracted/settings.gradle.kts
+          test -f extracted/build.gradle.kts
+          test -f extracted/app/build.gradle.kts
+          test -f extracted/app/src/main/AndroidManifest.xml
+
+          echo "Android project files verified."
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Build APK
+        run: |
+          cd extracted
+          gradle --no-daemon assembleDebug --stacktrace
+
+      - name: Prepare APK
+        run: |
+          set -e
+          APK_PATH="extracted/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK_PATH" ]; then
+            echo "ERROR: APK was not generated."
+            exit 1
+          fi
+
+          mkdir -p release
+          cp "$APK_PATH" release/AlNoor-Zakat-Calculator.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Al-Noor-Zakat-Calculator-APK
+          path: release/AlNoor-Zakat-Calculator.apk
+          if-no-files-found: error
+          retention-days: 30
